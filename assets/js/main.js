@@ -1,42 +1,26 @@
-const products = [
-    {
-        id: 1,
-        name: "Ноутбук ASUS",
-        price: 25000,
-        image: "https://placehold.co/600x400?text=Hello+World"
-    },
-    {
-        id: 2,
-        name: "Мишка Logitech",
-        price: 1200,
-        image: "https://placehold.co/600x400?text=Hello+World2"
-    },
-    {
-        id: 3,
-        name: "Клавіатура механічна",
-        price: 2500,
-        image: "https://placehold.co/600x400?text=Hello+World3"
-    },
-    {
-        id: 4,
-        name: "Навушники JBL",
-        price: 3500,
-        image: "https://placehold.co/600x400?text=Hello+World4"
-    },
-    {
-        id: 5,
-        name: "Монітор Samsung",
-        price: 9000,
-        image: "https://placehold.co/600x400?text=Hello+World5"
-    }
-];
+let globalStoreProducts = [];
 
-function fetchProducts() {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            resolve(products);
-        }, 1500);
-    });
+async function fetchProducts() {
+    try {
+        const response = await fetch(
+            "https://fakestoreapi.com/products?limit=8"
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP помилка: ${response.status}`);
+        }
+
+        const realProducts = await response.json();
+
+        return realProducts;
+    } catch (error) {
+        console.error(
+            "Помилка завантаження товарів:",
+            error.message
+        );
+
+        throw error;
+    }
 }
 
 let cart = [];
@@ -58,13 +42,15 @@ async function initShop() {
     try {
         const data = await fetchProducts();
 
+        globalStoreProducts = data;
+
         loader.classList.add("hidden");
 
         container.innerHTML = data.map((product) => `
             <div class="product-card">
-                <img src="${product.image}" alt="${product.name}">
-                <h3>${product.name}</h3>
-                <p class="product-price">${product.price} грн</p>
+                <img src="${product.image}" alt="${product.title}">
+                <h3>${product.title}</h3>
+                <p class="product-price">$${product.price}</p>
                 <button class="btn btn-buy" data-id="${product.id}">
                     Купити
                 </button>
@@ -75,7 +61,7 @@ async function initShop() {
         loader.classList.add("hidden");
 
         container.innerHTML = `
-            <p class="error">Помилка: ${error.message}</p>
+            <p class="error">Помилка мережі: ${error.message}</p>
         `;
     }
 }
@@ -84,11 +70,13 @@ productsGrid.addEventListener("click", (event) => {
     if (event.target.classList.contains("btn-buy")) {
         const productId = Number(event.target.dataset.id);
 
-        const selectedProduct = products.find(
+        const selectedProduct = globalStoreProducts.find(
             (p) => p.id === productId
         );
 
-        addToCart(selectedProduct);
+        if (selectedProduct) {
+            addToCart(selectedProduct);
+        }
     }
 });
 
@@ -102,6 +90,7 @@ function addToCart(product) {
     } else {
         cart.push({
             ...product,
+            name: product.title,
             quantity: 1
         });
     }
@@ -161,7 +150,7 @@ function renderCartItems() {
 
             <div class="cart-item-info">
                 <h4>${item.name}</h4>
-                <div class="cart-item-price">${item.price} грн</div>
+                <div class="cart-item-price">$${item.price}</div>
             </div>
 
             <div class="cart-item-controls">
@@ -177,7 +166,7 @@ function renderCartItems() {
                 <span class="quantity">${item.quantity}</span>
 
                 <button
-                    class="quantity-btn"
+                class="quantity-btn"
                     data-action="increase"
                     data-id="${item.id}"
                     type="button"
@@ -188,7 +177,7 @@ function renderCartItems() {
         </div>
     `).join("");
 
-    cartTotalSum.textContent = calculateTotal();
+    cartTotalSum.textContent = `$${calculateTotal().toFixed(2)}`;
 }
 
 cartItemsContainer.addEventListener("click", (event) => {
